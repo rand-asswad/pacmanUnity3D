@@ -320,6 +320,7 @@ MonoBehaviour:
   initialPosition: {x: 13.5, y: 0, z: 7}
   tileSize: 1
   speed: 10
+  currDirection: {x: 0, y: 0, z: 0}
 --- !u!135 &579693108
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -1315,6 +1316,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8618272f22350e3418a026d942f46d27, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  pacman: {fileID: 0}
 --- !u!4 &1878647946
 Transform:
   m_ObjectHideFlags: 0

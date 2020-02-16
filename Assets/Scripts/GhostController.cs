@@ -46,7 +46,8 @@ public class GhostController : MonoBehaviour {
         ghostBody = gameObject.transform.Find("GhostBody").gameObject;
 
         defaultColor = ghostBody.GetComponent<Renderer>().material;
-        scaredColor = Resources.Load<Material>("Materials/ScaredBlue");
+        scaredColor = Resources.Load("Materials/ScaredBlue", typeof(Material)) as Material;
+        ghostBody.GetComponent<Renderer>().material = scaredColor;
         nextTile = maze.GetNearestTile(maze.ghostHouse + new Vector3(3.5f, 0f, 5f));
         
         LeaveHome = new List<Vector3>();
@@ -122,7 +123,6 @@ public class GhostController : MonoBehaviour {
             if (dest.x < transform.position.x) dir = Direction.left;
             if (dest.y > transform.position.y) dir = Direction.up;
             if (dest.y < transform.position.y) dir = Direction.down;
-            print(dir);
             transform.localRotation = Rotation[dir];
         }
     }
@@ -131,12 +131,12 @@ public class GhostController : MonoBehaviour {
         GetComponent<Rigidbody>().MovePosition(p);
 
         if (Vector3.Distance(transform.position, LeaveHome[HomeIndex]) < Util.EPS) {
-            print("Reached node: " + HomeIndex.ToString());
             HomeIndex--;
             if (HomeIndex >= 0) dest = LeaveHome[HomeIndex];
             else {
                 HomeIndex = 0;
                 state = GhostState.Home;
+                ghostBody.GetComponent<Renderer>().material = defaultColor;
                 ghostBody.SetActive(true);
                 isDead = false;
             }
@@ -181,7 +181,6 @@ public class GhostController : MonoBehaviour {
             if (isDead && Vector3.Distance(transform.position, LeaveHome[HomeIndex]) < Util.EPS) {
                 state = GhostState.Dead;
                 return;
-                print("Im still here");
             }
 
             // update direction
