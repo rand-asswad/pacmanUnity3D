@@ -12,7 +12,7 @@ public class GhostController : MonoBehaviour {
     public GhostState state;
     private GhostState nextState;
     private Ghost ghost;
-    private bool isDead;
+    private bool homeReached; // when dead
 
     private GameObject ghostBody;
     private Material defaultColor;
@@ -29,7 +29,8 @@ public class GhostController : MonoBehaviour {
 
     public GameObject test;
 
-    public float speed = 10; // to be checked later
+    private float speed;
+    private float speedFactor = 0.8f; // at level 1
 
     public float TimeHome = 0; // ghost-specific
     public float TimeScatter = 7;
@@ -53,10 +54,12 @@ public class GhostController : MonoBehaviour {
         AssignGhost();
         InitRotation();
 
+        // load game objects
         gc = GameObject.Find("Game Engine").GetComponent<GameController>();
         maze = GameObject.Find("Maze").GetComponent<Maze>();
         ghostBody = gameObject.transform.Find("GhostBody").gameObject;
 
+        // load materials
         defaultColor = ghostBody.GetComponent<Renderer>().material;
         scaredColor = Resources.Load("Materials/ScaredBlue", typeof(Material)) as Material;
         scaredFlash = Resources.Load("Materials/ScaredWhite", typeof(Material)) as Material;
@@ -64,12 +67,12 @@ public class GhostController : MonoBehaviour {
 
         nextTile = maze.GetNearestTile(maze.ghostHouse + new Vector3(3.5f, 0f, 5f));
         
-        LeaveHome = new List<Vector3>();
 
+        // initialize scatter target and directives to leave home
+        LeaveHome = new List<Vector3>();
         switch (ghost) {
             case (Ghost.Blinky) :
                 TimeHome = 0;
-                dir = Direction.left; nextTile = nextTile.left;
                 scatterTarget = new Vector3(maze.width - 2, 0, maze.height + 4);
                 break;
             case (Ghost.Pinky) :
@@ -92,17 +95,20 @@ public class GhostController : MonoBehaviour {
         }
         LeaveHome.Add(maze.ghostHouse + new Vector3(3.5f, 0f, 5f));
         LeaveHome.Add(nextTile.pos);
+
+        Reset();
+    }
+
+    void Reset() {
         HomeIndex = 0;
-        
-
-        //transform.position = initialPosition;
         transform.position = LeaveHome[0];
-
         EndTimeHome = Time.time + gc.StartTime + TimeHome;
         state = GhostState.Home;
         nextState = GhostState.Scatter;
         target = scatterTarget;
-        isDead = false;
+        ghostBody.SetActive(true);
+        ghostBody.GetComponent<Renderer>().material = defaultColor;
+        speed = speedFactor * gc.fullSpeed;
     }
 
     void Update() {
@@ -135,7 +141,6 @@ public class GhostController : MonoBehaviour {
             HomeIndex++;
             if (HomeIndex < LeaveHome.Count) dest = LeaveHome[HomeIndex];
             else {
-                HomeIndex--;
                 dest = nextTile.pos;
                 RestoreLastState();
             }
@@ -148,41 +153,64 @@ public class GhostController : MonoBehaviour {
         }
     }
     void MoveDead() {
-        Vector3 p = Vector3.MoveTowards(transform.position, dest, speed * Time.deltaTime);
-        GetComponent<Rigidbody>().MovePosition(p);
+        //homeReached |= Vector3.Distance(transform.position, LeaveHome[HomeIndex]) < Util.EPS;
+        
+        Move();
 
-        if (Vector3.Distance(transform.position, LeaveHome[HomeIndex]) < Util.EPS) {
-            HomeIndex--;
-            if (HomeIndex >= 0) dest = LeaveHome[HomeIndex];
-            else {
-                HomeIndex = 0;
-                state = GhostState.Home;
-                ghostBody.GetComponent<Renderer>().material = defaultColor;
-                ghostBody.SetActive(true);
-                isDead = false;
+        if (Vector3.Distance(transform.position, dest) < Util.EPS) {
+            if (homeReached || Vector3.Distance(transform.position, LeaveHome[HomeIndex]) < Util.EPS) {
+                homeReached = true;
+                HomeIndex--;
+                if (HomeIndex >= 0) dest = LeaveHome[HomeIndex];
+                else {
+                    HomeIndex = 0;
+                    state = GhostState.Home;
+                    ghostBody.GetComponent<Renderer>().material = defaultColor;
+                    ghostBody.SetActive(true);
+                }
+                
+                if (dest.x > transform.position.x) dir = Direction.right;
+                if (dest.x < transform.position.x) dir = Direction.left;
+                if (dest.y > transform.position.y) dir = Direction.up;
+                if (dest.y < transform.position.y) dir = Direction.down;
+                transform.localRotation = Rotation[dir];
+            } else {
+                dir = UpdateDirection(nextTile.isIntersection);
+                UpdateTile();
             }
-            
-            if (dest.x > transform.position.x) dir = Direction.right;
-            if (dest.x < transform.position.x) dir = Direction.left;
-            if (dest.y > transform.position.y) dir = Direction.up;
-            if (dest.y < transform.position.y) dir = Direction.down;
-            transform.localRotation = Rotation[dir];
         }
     }
 
-
-    void MoveToTarget() {
+    void Move() {
         // handle maze edges
         Vector3 jumpWidth = new Vector3(maze.width, 0, 0);
         if (dir == Direction.right && transform.position.x > dest.x) transform.position -= jumpWidth;
         else if (dir == Direction.left && transform.position.x < dest.x) transform.position += jumpWidth;
 
-        // move toward next tile
+        // move toward destination
         Vector3 p = Vector3.MoveTowards(transform.position, dest, speed * Time.deltaTime);
         GetComponent<Rigidbody>().MovePosition(p);
 
-        // if ghost reaches next tile
+    }
+
+    void UpdateTile() {
+        switch (dir) {
+            case Direction.right: nextTile = nextTile.right; break;
+            case Direction.down:  nextTile = nextTile.down;  break;
+            case Direction.left:  nextTile = nextTile.left;  break;
+            case Direction.up:    nextTile = nextTile.up;    break;
+        }
+        dest = nextTile.pos;
+        transform.localRotation = Rotation[dir];
+    }
+
+
+    void MoveToTarget() {
+        Move();
+
+        // update destination if reached
         if (Vector3.Distance(transform.position, dest) < Util.EPS) {
+
             // update target if chasing
             if (nextTile.isIntersection && state == GhostState.Chase) {
                 Vector3 pacmanPos = Util.RoundVector(gc.pacman.transform.position);
@@ -198,31 +226,16 @@ public class GhostController : MonoBehaviour {
                 }
             }
 
-            // if dead and target reached go inside home
-            if (isDead && Vector3.Distance(transform.position, LeaveHome[HomeIndex]) < Util.EPS) {
-                state = GhostState.Dead;
-                return;
-            }
-
             // update direction
             dir = UpdateDirection(nextTile.isIntersection);
-
-            // update tile and rotate ghost
-            switch (dir) {
-                case Direction.right: nextTile = nextTile.right; break;
-                case Direction.down:  nextTile = nextTile.down;  break;
-                case Direction.left:  nextTile = nextTile.left;  break;
-                case Direction.up:    nextTile = nextTile.up;    break;
-            }
-            dest = nextTile.pos;
-            transform.localRotation = Rotation[dir];
+            UpdateTile();
         }
     }
 
     Direction UpdateDirection(bool intersection) {
         Direction d = dir;
         if (intersection) {
-            if (state == GhostState.Scared && !isDead) return RandomDirection();
+            if (state == GhostState.Scared) return RandomDirection();
 
             float min = Single.MaxValue;
             float dist;
@@ -340,9 +353,12 @@ public class GhostController : MonoBehaviour {
     void OnTriggerEnter(Collider other) {
         if (other.gameObject.CompareTag("Player")) {
             if (state == GhostState.Scared) {
-                isDead = true;
+                state = GhostState.Dead;
+                homeReached = false;
+                HomeIndex = LeaveHome.Count - 1;
                 target = LeaveHome[HomeIndex];
                 ghostBody.SetActive(false);
+                print(target);
             } else {
                 // kill pacman
             }
