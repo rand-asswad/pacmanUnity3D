@@ -317,6 +317,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   relativeTo: 0
+  active: 0
   initialPosition: {x: 13.5, y: 0, z: 7}
   tileSize: 1
   speed: 10
@@ -329,7 +330,7 @@ SphereCollider:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 579693106}
   m_Material: {fileID: 0}
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_Enabled: 1
   serializedVersion: 2
   m_Radius: 0.95
@@ -1316,6 +1317,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8618272f22350e3418a026d942f46d27, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  StartTime: 3
   pacman: {fileID: 0}
 --- !u!4 &1878647946
 Transform:

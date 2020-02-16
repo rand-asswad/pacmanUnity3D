@@ -7,7 +7,11 @@ using PacmanEngine;
 
 public class PacmanController : MonoBehaviour {
 
+    private GameController gc;
+
     public Space relativeTo = Space.Self;
+    public bool active = false;
+    private float TimeToActivate = Single.MaxValue;
 
     public Vector3 initialPosition = new Vector3(13.5f, 0f, 7f);
     public float tileSize = 1f;
@@ -21,6 +25,9 @@ public class PacmanController : MonoBehaviour {
     Animator animator = null;
 
     void Start() {
+        gc = GameObject.Find("Game Engine").GetComponent<GameController>();
+        TimeToActivate = Time.time + gc.StartTime;
+        
         transform.position = initialPosition;
         destination = transform.position;
         //transform.localRotation = Quaternion.Euler(0,  90, 0); // should be removed
@@ -31,8 +38,6 @@ public class PacmanController : MonoBehaviour {
     }
 
     void Update() {
-        bool isMoving = true;
-
         if (relativeTo == Space.Self) {
             // get next move
             if (Input.GetKeyDown(KeyCode.UpArrow))         nextOrientation = Quaternion.identity;
@@ -51,6 +56,11 @@ public class PacmanController : MonoBehaviour {
             else if (Input.GetKeyDown(KeyCode.LeftArrow))  {nextDirection = Vector3.left;   nextOrientation = Quaternion.Euler(0, -90, 90);}
         }
 
+        if (!active) {
+            if (Time.time < TimeToActivate) return;
+            active = true;
+        }
+
 
         // consider changing when pacman reaches tile center (his destination)
         if (Vector3.Distance(destination, transform.position) < Util.EPS) {
@@ -67,7 +77,7 @@ public class PacmanController : MonoBehaviour {
             } else {
                 //print("next direction is invalid -> direction unchanged: " + currDirection.ToString());
                 if (isValid(currDirection)) destination = transform.position + currDirection;
-                else {isMoving = false;
+                else {active = false;
                 //print("current direction invalid -> stopping");
                 }
             }
@@ -86,14 +96,13 @@ public class PacmanController : MonoBehaviour {
         }
 
         // update animation state
-        animator.SetBool("isIdle", !isMoving);
+        animator.SetBool("isIdle", !active);
         
         // move to destination
-        if (isMoving) {
+        if (active) {
             Vector3 p = Vector3.MoveTowards(transform.position, destination, speed * Time.deltaTime);
             GetComponent<Rigidbody>().MovePosition(p);
         }
-
     }
 
     bool isValid(Vector3 direction) {
@@ -118,6 +127,16 @@ public class PacmanController : MonoBehaviour {
         if (other.gameObject.CompareTag("Wall")) {
             print("COLLISION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             //Debug.Break();
+        }
+        if (other.gameObject.CompareTag("Power-Pellet")) {
+            gc.ScareGhosts();
+            gc.powerpellets--;
+            // score
+            other.gameObject.SetActive(false);
+        } else if (other.gameObject.CompareTag("Pac-Dot")) {
+            gc.pacdots--;
+            // score
+            other.gameObject.SetActive(false);
         }
     }
 }

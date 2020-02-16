@@ -8,7 +8,6 @@ public class Maze : MonoBehaviour {
 
     public Vector3 ghostHouse;
     public byte width, height;
-    public byte pacdots = 0;
 
     public Tile[,] tileMap;
     private char[,] charMap;
@@ -165,8 +164,8 @@ public class Maze : MonoBehaviour {
             
             case '-': Instantiate(Door, position, rot0, walls); break;
 
-            case '.': Instantiate(PacDot, position, rot0, collectables); pacdots++; return true;
-            case '0': Instantiate(PowerPellet, position, rot0, collectables); return true;
+            case '.': Instantiate(PacDot, position, rot0, collectables); gc.pacdots++; return true;
+            case '0': Instantiate(PowerPellet, position, rot0, collectables); gc.powerpellets++; return true;
 
             case ' ': return true;
 

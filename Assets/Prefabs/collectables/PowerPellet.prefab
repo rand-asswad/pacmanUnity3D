@@ -13,7 +13,6 @@ GameObject:
   - component: {fileID: 4216856197670339016}
   - component: {fileID: 4216856197670339019}
   - component: {fileID: -4264781322842136138}
-  - component: {fileID: 8918248352927488595}
   m_Layer: 0
   m_Name: PowerPellet
   m_TagString: Power-Pellet
@@ -110,18 +109,3 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!114 &8918248352927488595
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4216856197670339021}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 482cb624b5b2e3840801b32a109d96a7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  minScale: 0.5
-  maxScale: 2
-  scaleRate: 4

@@ -17,6 +17,9 @@ public class GhostController : MonoBehaviour {
     private GameObject ghostBody;
     private Material defaultColor;
     private Material scaredColor;
+    private Material scaredFlash;
+    private float flashInterval = 0.15f;
+    private byte flashCounter = 10;
 
     private Vector3 scatterTarget;
     private Vector3 target;
@@ -28,9 +31,18 @@ public class GhostController : MonoBehaviour {
 
     public float speed = 10; // to be checked later
 
-    public float TimeToLeaveHome;
-    public float TimeToEndScatter;
-    public float TimeToEndChase;
+    public float TimeHome = 0; // ghost-specific
+    public float TimeScatter = 7;
+    public float TimeChase = 20;
+    public float TimeScared = 8;
+    
+    private float TimeRemaining;
+
+    public float EndTimeHome;
+    public float EndTimeScatter;
+    public float EndTimeChase;
+    public float EndTimeScared;
+
 
     private List<Vector3> LeaveHome;
     private int HomeIndex;
@@ -47,57 +59,66 @@ public class GhostController : MonoBehaviour {
 
         defaultColor = ghostBody.GetComponent<Renderer>().material;
         scaredColor = Resources.Load("Materials/ScaredBlue", typeof(Material)) as Material;
-        ghostBody.GetComponent<Renderer>().material = scaredColor;
+        scaredFlash = Resources.Load("Materials/ScaredWhite", typeof(Material)) as Material;
+        ghostBody.GetComponent<Renderer>().material = defaultColor;
+
         nextTile = maze.GetNearestTile(maze.ghostHouse + new Vector3(3.5f, 0f, 5f));
         
         LeaveHome = new List<Vector3>();
-        HomeIndex = 0;
-        nextState = GhostState.Scared;
 
         switch (ghost) {
             case (Ghost.Blinky) :
-                TimeToLeaveHome = Time.time + 2;
+                TimeHome = 0;
                 dir = Direction.left; nextTile = nextTile.left;
                 scatterTarget = new Vector3(maze.width - 2, 0, maze.height + 4);
-                Instantiate(test, scatterTarget, Quaternion.identity);
                 break;
             case (Ghost.Pinky) :
+                TimeHome = 0.5f;
                 LeaveHome.Add(maze.ghostHouse + new Vector3(3.5f, 0f, 2f));
-                TimeToLeaveHome = Time.time + 2.5f;
                 scatterTarget = new Vector3(2, 0, maze.height + 4);
                 break;
             case (Ghost.Inky) :
+                TimeHome = 4.5f;
                 LeaveHome.Add(maze.ghostHouse + new Vector3(1.5f, 0f, 2f));
                 LeaveHome.Add(maze.ghostHouse + new Vector3(3.5f, 0f, 2f));
-                TimeToLeaveHome = Time.time + 6.5f;
                 scatterTarget = new Vector3(maze.width, 0, -1);
                 break;
             case (Ghost.Clyde) :
+                TimeHome = 8;
                 LeaveHome.Add(maze.ghostHouse + new Vector3(5.5f, 0f, 2f));
                 LeaveHome.Add(maze.ghostHouse + new Vector3(3.5f, 0f, 2f));
-                TimeToLeaveHome = Time.time + 11;
                 scatterTarget = new Vector3(0, 0, -1);
                 break;
         }
         LeaveHome.Add(maze.ghostHouse + new Vector3(3.5f, 0f, 5f));
         LeaveHome.Add(nextTile.pos);
+        HomeIndex = 0;
         
 
         //transform.position = initialPosition;
         transform.position = LeaveHome[0];
 
+        EndTimeHome = Time.time + gc.StartTime + TimeHome;
         state = GhostState.Home;
+        nextState = GhostState.Scatter;
         target = scatterTarget;
         isDead = false;
-
     }
 
     void Update() {
         switch (state) {
+            case GhostState.Inactive: break;
             case GhostState.Home: MoveAtHome(); break;
             case GhostState.Scatter:
+                if (Time.time > EndTimeScatter) Chase();
+                MoveToTarget();
+                break;
             case GhostState.Chase:
+                if (Time.time > EndTimeChase) Scatter();
+                MoveToTarget();
+                break;
             case GhostState.Scared:
+                if (EndTimeScared - Time.time < 1.5f) Flash();
                 MoveToTarget();
                 break;
             case GhostState.Dead: MoveDead(); break;
@@ -105,7 +126,7 @@ public class GhostController : MonoBehaviour {
     }
 
     void MoveAtHome() {
-        if (Time.time >= TimeToLeaveHome) {
+        if (Time.time >= EndTimeHome) {
             Vector3 p = Vector3.MoveTowards(transform.position, dest, speed * Time.deltaTime);
             GetComponent<Rigidbody>().MovePosition(p);
         }
@@ -116,7 +137,7 @@ public class GhostController : MonoBehaviour {
             else {
                 HomeIndex--;
                 dest = nextTile.pos;
-                state = nextState;
+                RestoreLastState();
             }
             
             if (dest.x > transform.position.x) dir = Direction.right;
@@ -165,7 +186,7 @@ public class GhostController : MonoBehaviour {
             // update target if chasing
             if (nextTile.isIntersection && state == GhostState.Chase) {
                 Vector3 pacmanPos = Util.RoundVector(gc.pacman.transform.position);
-                Vector3 pacmanDir4 = 4 * gc.pacman.GetComponent<PacmanController>().currDirection;
+                Vector3 pacmanDir4 = 4 * gc.pacman.currDirection;
                 switch (ghost) {
                     case Ghost.Blinky: target = pacmanPos; break;
                     case Ghost.Pinky: target = pacmanPos + pacmanDir4; break;
@@ -252,11 +273,49 @@ public class GhostController : MonoBehaviour {
         return possible[random.Next(0, possible.Count)];
     }
 
-    void Scatter() {
-        state = GhostState.Scatter;
-        target = scatterTarget;
+    void Flip() {
     }
 
+    void Scatter() {
+        Flip();
+        state = GhostState.Scatter;
+        nextState = GhostState.Chase;
+        target = scatterTarget;
+        EndTimeScatter = Time.time + TimeScatter;
+    }
+    
+    void Chase() {
+        Flip();
+        state = GhostState.Chase;
+        nextState = GhostState.Scatter;
+        EndTimeChase = Time.time + TimeChase;
+    }
+
+    public void Scare() {
+        switch (state) {
+            case GhostState.Scatter: TimeRemaining = EndTimeScatter - Time.time; break;
+            case GhostState.Chase: TimeRemaining = EndTimeChase - Time.time; break;
+            case GhostState.Home: TimeRemaining = EndTimeHome - Time.time; break;
+        }
+        Flip();
+        ghostBody.GetComponent<Renderer>().material = scaredColor;
+        nextState = state;
+        state = GhostState.Scared;
+        EndTimeScared = Time.time + TimeScared;
+        flashCounter = 10;
+    }
+
+    void Flash() {
+        float dt = EndTimeScared - Time.time;
+        if (dt < 0 || flashCounter == 0) {
+            ghostBody.GetComponent<Renderer>().material = defaultColor;
+            RestoreLastState();
+        } else if (dt < flashInterval * flashCounter) {
+            if ((flashCounter & 1) > 0) ghostBody.GetComponent<Renderer>().material = scaredColor;
+            else ghostBody.GetComponent<Renderer>().material = scaredFlash;
+            flashCounter--;
+        }
+    }
 
     private bool AssignGhost() {
         switch (gameObject.name) {
@@ -280,10 +339,31 @@ public class GhostController : MonoBehaviour {
 
     void OnTriggerEnter(Collider other) {
         if (other.gameObject.CompareTag("Player")) {
-            isDead = true;
-            //state = GhostState.Scatter;
-            target = LeaveHome[HomeIndex];
-            ghostBody.SetActive(false);
+            if (state == GhostState.Scared) {
+                isDead = true;
+                target = LeaveHome[HomeIndex];
+                ghostBody.SetActive(false);
+            } else {
+                // kill pacman
+            }
+        }
+    }
+
+
+    void RestoreLastState() {
+        switch (nextState) {
+            case GhostState.Chase:
+                state = GhostState.Chase;
+                nextState = GhostState.Scatter;
+                EndTimeChase = Time.time + TimeRemaining;
+                break;
+            case GhostState.Scatter:
+                state = GhostState.Scatter;
+                nextState = GhostState.Chase;
+                target = scatterTarget;
+                EndTimeScatter = Time.time + TimeRemaining;
+                break;
+            default: Scatter(); break;
         }
     }
 }

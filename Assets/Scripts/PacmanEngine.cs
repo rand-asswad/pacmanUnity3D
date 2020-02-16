@@ -6,7 +6,7 @@ using UnityEngine;
 namespace PacmanEngine {
 
     public enum Ghost {Blinky, Pinky, Inky, Clyde}
-    public enum GhostState {Home, Scatter, Chase, Scared, Dead}
+    public enum GhostState {Inactive, Home, Scatter, Chase, Scared, Dead}
 
     public enum Direction {right, down, left, up} // increasing priority order
 
