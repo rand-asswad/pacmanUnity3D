@@ -6,6 +6,7 @@ using UnityEngine;
 
 namespace PacmanEngine {
 
+    public enum GameState {Init, Play, Pause, Over}
     public enum CamChoice {POV, Top, BirdView}
 
     public enum Ghost {Blinky, Pinky, Inky, Clyde}

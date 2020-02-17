@@ -113,6 +113,8 @@ public class GhostController : MonoBehaviour {
         ghostBody.SetActive(true);
         ghostBody.GetComponent<Renderer>().material = defaultColor;
         speed = gc.ghostSpeed[0] * gc.fullSpeed;
+
+        gc.state = GameState.Init;
     }
 
     void Update() {
@@ -389,7 +391,6 @@ public class GhostController : MonoBehaviour {
                 gc.score += gc.eatGhostPoints;
             } else {
                 gc.LoseLife();
-                print("Lose life: remaining lives = " + Convert.ToString(gc.lives));
             }
         }
     }

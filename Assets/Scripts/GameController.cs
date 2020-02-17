@@ -4,7 +4,9 @@ using UnityEngine;
 using PacmanEngine;
 
 public class GameController : MonoBehaviour {
+
     public bool paused = false;
+    public GameState state = GameState.Init;
 
     public CamChoice camera = CamChoice.Top;
     private Array<CamChoice,Camera> cameras;
@@ -19,13 +21,13 @@ public class GameController : MonoBehaviour {
     public float[] ghostSpeed  = new float[2];
     public float[] pacmanSpeed = new float[2];
 
-    public enum GameState : byte {Start, Play, Dead}
-    public static GameState gameState;
     public static bool scaredGhosts;
     public int eatGhostPoints = 100;
 
     public float StartTime = 3;
     public float TimeScared = 8;
+    private float TimeToStart;
+    public bool started;
     
     public PacmanController pacman;
     public Array<Ghost,GhostController> ghosts;
@@ -50,6 +52,9 @@ public class GameController : MonoBehaviour {
 
         SetSpeeds();
         InitCameras();
+        TimeToStart = Time.time + StartTime;
+        state = GameState.Init;
+        started = false;
     }
 
     void InitCameras() {
@@ -83,6 +88,10 @@ public class GameController : MonoBehaviour {
     }
     
     void Update() {
+        if (!started && Time.time >= TimeToStart) {
+            state = GameState.Play;
+            started = true;
+        }
         pauseControl();
         ToggleCamera();
         WinLevel();
@@ -91,6 +100,8 @@ public class GameController : MonoBehaviour {
     void ResetCharacters() {
         pacman.Reset();
         foreach(GhostController ghost in ghosts) ghost.Reset();
+        TimeToStart = Time.time + StartTime;
+        started = false;
     }
 
     void ResetCollectables() {
@@ -108,19 +119,20 @@ public class GameController : MonoBehaviour {
         if (lives > 0) {
             ResetCharacters();
             Resume();
+            state = GameState.Init;
         } else {
-            print("Game over");
+            state = GameState.Over;
         }
     }
 
     void WinLevel() {
         if ((pacdots + powerpellets) == 0) {
-            print("YOU WON!");
             Pause();
             level++;
             ResetCollectables();
             ResetCharacters();
             Resume();
+            state = GameState.Init;
         }
     }
 
@@ -138,17 +150,19 @@ public class GameController : MonoBehaviour {
 
     void pauseControl() {
         if (Input.GetKeyDown(KeyCode.Escape)) {
-            if (paused) Resume();
+            if (paused && state != GameState.Over) Resume();
             else Pause();
         }
     }
 
     void Resume() {
+        state = GameState.Play;
         paused = false;
         Time.timeScale = 1f;
     }
     
     void Pause() {
+        state = GameState.Pause;
         paused = true;
         Time.timeScale = 0;
     }

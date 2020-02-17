@@ -9,7 +9,7 @@ public class PacmanController : MonoBehaviour {
 
     private GameController gc;
 
-    public Space relativeTo = Space.Self;
+    public Space relativeTo;
     public bool active;
     private float TimeToActivate = Single.MaxValue;
 
@@ -48,6 +48,7 @@ public class PacmanController : MonoBehaviour {
         nextOrientation = Quaternion.identity;
         speed = gc.pacmanSpeed[0] * gc.fullSpeed;
         energized = false;
+        gc.state = GameState.Init;
     }
 
     void GetInput() {
