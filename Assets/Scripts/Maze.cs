@@ -33,8 +33,8 @@ public class Maze : MonoBehaviour {
         ReadMazeFile();
         parseMaze();
 
-        floor.localScale = new Vector3(0.1f * width, 1, 0.1f * height);
-        floor.position = new Vector3(width / 2f - 0.5f, -0.5f * walls.localScale.y, height / 2f - 0.5f);
+        floor.localScale = new Vector3(0.1f * (width - 1), 1, 0.1f * height);
+        floor.position = new Vector3((width-1) / 2f - 0.5f, -0.5f * walls.localScale.y, height / 2f - 0.5f);
         floor.gameObject.SetActive(true);
 
         transform.position = new Vector3(0, -1, 0);
@@ -184,8 +184,9 @@ public class Maze : MonoBehaviour {
     }
 
     void ReadMazeFile() {
-        string path = "Assets/Scripts/maze.txt";
-        string[] lines = System.IO.File.ReadAllLines(path);
+        //string path = "Assets/Resources/maze.txt";
+        //string[] lines = System.IO.File.ReadAllLines(path);
+        string[] lines = mazeFile.text.Split("\n\r"[0]);
 
         height = (byte) lines.Length;
         width = (byte) lines[0].Length;

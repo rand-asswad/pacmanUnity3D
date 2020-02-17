@@ -114,13 +114,14 @@ public class GameController : MonoBehaviour {
     }
 
     public void LoseLife() {
-        lives--;
         Pause();
-        if (lives > 0) {
+        if (lives > 1) {
+            lives--;
             ResetCharacters();
             Resume();
             state = GameState.Init;
         } else {
+            lives = 0;
             state = GameState.Over;
         }
     }
