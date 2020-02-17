@@ -26,16 +26,17 @@ public class GhostController : MonoBehaviour {
     private Vector3 dest;
     private Direction dir;
     private Tile nextTile;
+    private Tile baseTile;
 
     public GameObject test;
 
     private float speed;
-    private float speedFactor = 0.8f; // at level 1
+    private float deadSpeed = 2;
 
     public float TimeHome = 0; // ghost-specific
     public float TimeScatter = 7;
     public float TimeChase = 20;
-    public float TimeScared = 8;
+    public float TimeScared; // set in gc
     
     private float TimeRemaining;
 
@@ -65,8 +66,7 @@ public class GhostController : MonoBehaviour {
         scaredFlash = Resources.Load("Materials/ScaredWhite", typeof(Material)) as Material;
         ghostBody.GetComponent<Renderer>().material = defaultColor;
 
-        nextTile = maze.GetNearestTile(maze.ghostHouse + new Vector3(3.5f, 0f, 5f));
-        
+        baseTile = maze.GetNearestTile(maze.ghostHouse + new Vector3(3.5f, 0f, 5f));
 
         // initialize scatter target and directives to leave home
         LeaveHome = new List<Vector3>();
@@ -94,21 +94,24 @@ public class GhostController : MonoBehaviour {
                 break;
         }
         LeaveHome.Add(maze.ghostHouse + new Vector3(3.5f, 0f, 5f));
-        LeaveHome.Add(nextTile.pos);
+        LeaveHome.Add(baseTile.pos);
 
+        TimeScared = gc.TimeScared;
         Reset();
     }
 
-    void Reset() {
+    public void Reset() {
         HomeIndex = 0;
         transform.position = LeaveHome[0];
+        dest = transform.position;
+        nextTile = baseTile;
         EndTimeHome = Time.time + gc.StartTime + TimeHome;
         state = GhostState.Home;
         nextState = GhostState.Scatter;
         target = scatterTarget;
         ghostBody.SetActive(true);
         ghostBody.GetComponent<Renderer>().material = defaultColor;
-        speed = speedFactor * gc.fullSpeed;
+        speed = gc.ghostSpeed[0] * gc.fullSpeed;
     }
 
     void Update() {
@@ -165,6 +168,7 @@ public class GhostController : MonoBehaviour {
                 else {
                     HomeIndex = 0;
                     state = GhostState.Home;
+                    speed = gc.ghostSpeed[0] * gc.fullSpeed;
                     ghostBody.GetComponent<Renderer>().material = defaultColor;
                     ghostBody.SetActive(true);
                 }
@@ -295,6 +299,7 @@ public class GhostController : MonoBehaviour {
         nextState = GhostState.Chase;
         target = scatterTarget;
         EndTimeScatter = Time.time + TimeScatter;
+        speed = gc.ghostSpeed[0] * gc.fullSpeed;
     }
     
     void Chase() {
@@ -302,6 +307,7 @@ public class GhostController : MonoBehaviour {
         state = GhostState.Chase;
         nextState = GhostState.Scatter;
         EndTimeChase = Time.time + TimeChase;
+        speed = gc.ghostSpeed[0] * gc.fullSpeed;
     }
 
     public void Scare() {
@@ -316,6 +322,7 @@ public class GhostController : MonoBehaviour {
         state = GhostState.Scared;
         EndTimeScared = Time.time + TimeScared;
         flashCounter = 10;
+        speed = gc.ghostSpeed[1] * gc.fullSpeed;
     }
 
     void Flash() {
@@ -352,15 +359,16 @@ public class GhostController : MonoBehaviour {
 
     void OnTriggerEnter(Collider other) {
         if (other.gameObject.CompareTag("Player")) {
-            if (state == GhostState.Scared) {
+            if (state == GhostState.Scared || state == GhostState.Dead) {
                 state = GhostState.Dead;
                 homeReached = false;
                 HomeIndex = LeaveHome.Count - 1;
                 target = LeaveHome[HomeIndex];
                 ghostBody.SetActive(false);
-                print(target);
+                speed = deadSpeed * gc.fullSpeed;
             } else {
-                // kill pacman
+                gc.LoseLife();
+                print("Lose life: remaining lives = " + Convert.ToString(gc.lives));
             }
         }
     }
@@ -381,5 +389,6 @@ public class GhostController : MonoBehaviour {
                 break;
             default: Scatter(); break;
         }
+        speed = gc.ghostSpeed[0] * gc.fullSpeed;
     }
 }

@@ -13,31 +13,43 @@ public class PacmanController : MonoBehaviour {
     public bool active = false;
     private float TimeToActivate = Single.MaxValue;
 
+    private bool energized;
+    private float EndEnergyTime;
+
     public Vector3 initialPosition = new Vector3(13.5f, 0f, 7f);
     public float tileSize = 1f;
-    public float speed = 10; // tiles per second
 
-    Vector3 destination = Vector3.zero;
+    private float speed; // tiles per second
+
+    public Vector3 destination = Vector3.zero;
     public Vector3 currDirection = Vector3.zero;
-    Vector3 nextDirection = Vector3.zero;
-    Quaternion nextOrientation = Quaternion.identity;
+    public Vector3 nextDirection = Vector3.zero;
+    public Quaternion nextOrientation = Quaternion.identity;
 
     Animator animator = null;
 
     void Start() {
         gc = GameObject.Find("Game Engine").GetComponent<GameController>();
-        TimeToActivate = Time.time + gc.StartTime;
-        
-        transform.position = initialPosition;
-        destination = transform.position;
-        //transform.localRotation = Quaternion.Euler(0,  90, 0); // should be removed
         animator = GetComponent<Animator>();
 
         if (relativeTo == Space.Self) transform.localRotation = Quaternion.identity;
         else if (relativeTo == Space.World) transform.localRotation = Quaternion.Euler(0, 0, 90);
+
+        Reset();
     }
 
-    void Update() {
+    public void Reset() {
+        TimeToActivate = Time.time + gc.StartTime;
+        transform.position = initialPosition;
+        destination = transform.position;
+        currDirection = Vector3.zero;
+        nextDirection = Vector3.zero;
+        nextOrientation = Quaternion.identity;
+        speed = gc.pacmanSpeed[0] * gc.fullSpeed;
+        energized = false;
+    }
+
+    void GetInput() {
         if (relativeTo == Space.Self) {
             // get next move
             if (Input.GetKeyDown(KeyCode.UpArrow))         nextOrientation = Quaternion.identity;
@@ -55,18 +67,25 @@ public class PacmanController : MonoBehaviour {
             else if (Input.GetKeyDown(KeyCode.DownArrow))  {nextDirection = Vector3.back;   nextOrientation = Quaternion.Euler(0, 180, 90);}
             else if (Input.GetKeyDown(KeyCode.LeftArrow))  {nextDirection = Vector3.left;   nextOrientation = Quaternion.Euler(0, -90, 90);}
         }
+    }
+
+    void Update() {
+        if (energized && Time.time > EndEnergyTime) {
+            energized = false;
+            speed = gc.pacmanSpeed[0] * gc.fullSpeed;
+        }
+
+        GetInput();
 
         if (!active) {
             if (Time.time < TimeToActivate) return;
             active = true;
         }
 
-
         // consider changing when pacman reaches tile center (his destination)
         if (Vector3.Distance(destination, transform.position) < Util.EPS) {
         //if (destination == transform.position) {
             if (isValid(nextDirection)) {
-                //print("next direction is valid -> changing direction to " + nextDirection.ToString() + " at " + transform.position.ToString());
                 if (relativeTo == Space.Self) {
                     transform.localRotation *= nextOrientation;
                     nextOrientation = Quaternion.identity;
@@ -75,16 +94,17 @@ public class PacmanController : MonoBehaviour {
                 destination = transform.position + nextDirection;
                 currDirection = nextDirection;
             } else {
-                //print("next direction is invalid -> direction unchanged: " + currDirection.ToString());
                 if (isValid(currDirection)) destination = transform.position + currDirection;
-                else {active = false;
-                //print("current direction invalid -> stopping");
-                }
+                else active = false;
             }
 
             //destination = new Vector3((float)Math.Round(destination.x, 0), 0f,(float) Math.Round(destination.z, 0));
             destination = Util.RoundVector(destination);
         }
+        
+        // update animation state
+        animator.SetBool("isIdle", !active);
+        
 
         Vector3 jumpWidth = new Vector3(28, 0, 0);
         if (transform.position.x >= 27.5 && currDirection.x > 0) {
@@ -95,9 +115,6 @@ public class PacmanController : MonoBehaviour {
             destination += jumpWidth;
         }
 
-        // update animation state
-        animator.SetBool("isIdle", !active);
-        
         // move to destination
         if (active) {
             Vector3 p = Vector3.MoveTowards(transform.position, destination, speed * Time.deltaTime);
@@ -112,14 +129,7 @@ public class PacmanController : MonoBehaviour {
 
         RaycastHit hit;
         int layerWallMask = 1 << 8;
-        //bool isHit = Physics.Linecast(pos, pos + direction, out hit, layerWallMask);
         bool isHit = Physics.Raycast(pos, direction, out hit, 1.5f, layerWallMask);
-        //if (isHit) {
-        //    print("Collision point ====================================" + hit.point.ToString());
-        //    print("PACMAN position ====================================" + pos.ToString());
-        //    print("WALL position ======================================" + hit.transform.position.ToString());
-        //}
-        //return (hit.collider == GetComponent<Collider>());
         return !isHit;
     }
 
@@ -131,12 +141,17 @@ public class PacmanController : MonoBehaviour {
         if (other.gameObject.CompareTag("Power-Pellet")) {
             gc.ScareGhosts();
             gc.powerpellets--;
-            // score
+            gc.score += 50;
             other.gameObject.SetActive(false);
+            energized = true;
+            speed = gc.pacmanSpeed[1] * gc.fullSpeed;
+            EndEnergyTime = Time.time + gc.TimeScared;
+            //TimeToActivate = Time.time + 3/gc.fps; // pause for 3 frames
         } else if (other.gameObject.CompareTag("Pac-Dot")) {
             gc.pacdots--;
-            // score
+            gc.score += 10;
             other.gameObject.SetActive(false);
+            //TimeToActivate = Time.time + 1/gc.fps; // pause for 1 frame
         }
     }
 }
