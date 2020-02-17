@@ -6,6 +6,8 @@ using UnityEngine;
 
 namespace PacmanEngine {
 
+    public enum CamChoice {POV, Top, BirdView}
+
     public enum Ghost {Blinky, Pinky, Inky, Clyde}
     public enum GhostState {Inactive, Home, ScaredAtHome, Scatter, Chase, Scared, Dead}
 

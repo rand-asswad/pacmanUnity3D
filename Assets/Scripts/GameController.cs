@@ -6,9 +6,12 @@ using PacmanEngine;
 public class GameController : MonoBehaviour {
     public bool paused = false;
 
-    public uint score;
-    public byte lives;
-    public byte level;
+    public CamChoice camera = CamChoice.Top;
+    private Array<CamChoice,Camera> cameras;
+
+    public int score;
+    public int lives;
+    public int level;
 
     public float fullSpeed = 11;
     public float fps = 60;
@@ -19,7 +22,7 @@ public class GameController : MonoBehaviour {
     public enum GameState : byte {Start, Play, Dead}
     public static GameState gameState;
     public static bool scaredGhosts;
-    public uint eatGhostPoints = 100;
+    public int eatGhostPoints = 100;
 
     public float StartTime = 3;
     public float TimeScared = 8;
@@ -28,8 +31,8 @@ public class GameController : MonoBehaviour {
     public Array<Ghost,GhostController> ghosts;
     public GameObject collectables;
 
-    public byte pacdots = 0;
-    public byte powerpellets = 0;
+    public int pacdots = 0;
+    public int powerpellets = 0;
 
     void Awake() {
         score = 0;
@@ -46,10 +49,42 @@ public class GameController : MonoBehaviour {
         collectables = GameObject.Find("Collectables");
 
         SetSpeeds();
+        InitCameras();
+    }
+
+    void InitCameras() {
+        cameras = new Array<CamChoice,Camera>();
+        cameras[CamChoice.POV] = GameObject.Find("POV Camera").GetComponent<Camera>();
+        cameras[CamChoice.Top] = GameObject.Find("Top Camera").GetComponent<Camera>();
+        cameras[CamChoice.BirdView] = GameObject.Find("BirdView Camera").GetComponent<Camera>();
+        SetCamera(camera);
+    }
+
+    void ToggleCamera() {
+        if (Input.GetKeyDown(KeyCode.C)) {
+            int i = (int) camera;
+            i = (i+1) % cameras.Length;
+            camera = (CamChoice) i;
+            SetCamera(camera);
+        }
+    }
+
+    void SetCamera(CamChoice cam) {
+        camera = cam;
+        foreach (CamChoice c in cameras.keys) {
+            cameras[c].enabled = (c == cam);
+        }
+        pacman.transform.localRotation = Quaternion.Euler(0, pacman.transform.localRotation.y, 0);
+        if (cam == CamChoice.Top) {
+            pacman.relativeTo = Space.World;
+            pacman.transform.localRotation *= Quaternion.Euler(0, 0, 90);
+        }
+        else pacman.relativeTo = Space.Self;
     }
     
     void Update() {
         pauseControl();
+        ToggleCamera();
         WinLevel();
     }
 
@@ -79,7 +114,7 @@ public class GameController : MonoBehaviour {
     }
 
     void WinLevel() {
-        if ((pacdots | powerpellets) == 0) {
+        if ((pacdots + powerpellets) == 0) {
             print("YOU WON!");
             Pause();
             level++;
@@ -114,7 +149,7 @@ public class GameController : MonoBehaviour {
     }
     
     void Pause() {
-        paused = false;
+        paused = true;
         Time.timeScale = 0;
     }
 }
