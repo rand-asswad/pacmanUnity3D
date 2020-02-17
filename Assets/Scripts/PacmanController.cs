@@ -10,7 +10,7 @@ public class PacmanController : MonoBehaviour {
     private GameController gc;
 
     public Space relativeTo = Space.Self;
-    public bool active = false;
+    public bool active;
     private float TimeToActivate = Single.MaxValue;
 
     private bool energized;
@@ -19,12 +19,12 @@ public class PacmanController : MonoBehaviour {
     public Vector3 initialPosition = new Vector3(13.5f, 0f, 7f);
     public float tileSize = 1f;
 
-    private float speed; // tiles per second
+    private float speed;
 
-    public Vector3 destination = Vector3.zero;
+    private Vector3 destination = Vector3.zero;
     public Vector3 currDirection = Vector3.zero;
-    public Vector3 nextDirection = Vector3.zero;
-    public Quaternion nextOrientation = Quaternion.identity;
+    private Vector3 nextDirection = Vector3.zero;
+    private Quaternion nextOrientation = Quaternion.identity;
 
     Animator animator = null;
 
@@ -39,6 +39,7 @@ public class PacmanController : MonoBehaviour {
     }
 
     public void Reset() {
+        active = false;
         TimeToActivate = Time.time + gc.StartTime;
         transform.position = initialPosition;
         destination = transform.position;
@@ -73,6 +74,7 @@ public class PacmanController : MonoBehaviour {
         if (energized && Time.time > EndEnergyTime) {
             energized = false;
             speed = gc.pacmanSpeed[0] * gc.fullSpeed;
+            gc.eatGhostPoints = 100;
         }
 
         GetInput();
@@ -95,10 +97,12 @@ public class PacmanController : MonoBehaviour {
                 currDirection = nextDirection;
             } else {
                 if (isValid(currDirection)) destination = transform.position + currDirection;
-                else active = false;
+                else {
+                    active = false;
+                    currDirection = Vector3.zero;
+                }
             }
 
-            //destination = new Vector3((float)Math.Round(destination.x, 0), 0f,(float) Math.Round(destination.z, 0));
             destination = Util.RoundVector(destination);
         }
         

@@ -19,6 +19,7 @@ public class GameController : MonoBehaviour {
     public enum GameState : byte {Start, Play, Dead}
     public static GameState gameState;
     public static bool scaredGhosts;
+    public uint eatGhostPoints = 100;
 
     public float StartTime = 3;
     public float TimeScared = 8;

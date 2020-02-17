@@ -13,6 +13,7 @@ public class GhostController : MonoBehaviour {
     private GhostState nextState;
     private Ghost ghost;
     private bool homeReached; // when dead
+    private bool scaredAtHome;
 
     private GameObject ghostBody;
     private Material defaultColor;
@@ -129,6 +130,9 @@ public class GhostController : MonoBehaviour {
             case GhostState.Scared:
                 if (EndTimeScared - Time.time < 1.5f) Flash();
                 MoveToTarget();
+                break;
+            case GhostState.ScaredAtHome:
+                if (EndTimeScared - Time.time < 1.5f) Flash();
                 break;
             case GhostState.Dead: MoveDead(); break;
         }
@@ -291,6 +295,15 @@ public class GhostController : MonoBehaviour {
     }
 
     void Flip() {
+        switch (dir) {
+            case Direction.right: nextTile = nextTile.left;  break;
+            case Direction.down:  nextTile = nextTile.up;    break;
+            case Direction.left:  nextTile = nextTile.right; break;
+            case Direction.up:    nextTile = nextTile.down;  break;
+        }
+        dest = nextTile.pos;
+        transform.localRotation *= Rotation[Direction.down];
+        dir = GetCurrentDirection();
     }
 
     void Scatter() {
@@ -316,10 +329,14 @@ public class GhostController : MonoBehaviour {
             case GhostState.Chase: TimeRemaining = EndTimeChase - Time.time; break;
             case GhostState.Home: TimeRemaining = EndTimeHome - Time.time; break;
         }
-        Flip();
         ghostBody.GetComponent<Renderer>().material = scaredColor;
-        nextState = state;
-        state = GhostState.Scared;
+        if (state == GhostState.Home) {
+            state = GhostState.ScaredAtHome;
+        } else if (state == GhostState.Scatter || state == GhostState.Chase) {
+            Flip();
+            nextState = state;
+            state = GhostState.Scared;
+        }
         EndTimeScared = Time.time + TimeScared;
         flashCounter = 10;
         speed = gc.ghostSpeed[1] * gc.fullSpeed;
@@ -351,10 +368,12 @@ public class GhostController : MonoBehaviour {
 
     private void InitRotation() {
         Rotation = new Array<Direction, Quaternion>();
+        float tmp = 1f;
+        tmp /= (float) Math.Sqrt(2f);
         Rotation[Direction.up] = Quaternion.identity;
-        Rotation[Direction.right] = Quaternion.Euler(0,  90, 0);
-        Rotation[Direction.down]  = Quaternion.Euler(0, 180, 0);
-        Rotation[Direction.left]  = Quaternion.Euler(0, -90, 0);
+        Rotation[Direction.right] = new Quaternion(0, tmp, 0, tmp);
+        Rotation[Direction.down]  = new Quaternion(0, 1, 0, 0);
+        Rotation[Direction.left]  = new Quaternion(0, -tmp, 0, tmp);
     }
 
     void OnTriggerEnter(Collider other) {
@@ -366,6 +385,8 @@ public class GhostController : MonoBehaviour {
                 target = LeaveHome[HomeIndex];
                 ghostBody.SetActive(false);
                 speed = deadSpeed * gc.fullSpeed;
+                gc.eatGhostPoints <<= 1; // x2
+                gc.score += gc.eatGhostPoints;
             } else {
                 gc.LoseLife();
                 print("Lose life: remaining lives = " + Convert.ToString(gc.lives));
@@ -375,7 +396,10 @@ public class GhostController : MonoBehaviour {
 
 
     void RestoreLastState() {
-        switch (nextState) {
+        if (state == GhostState.ScaredAtHome) {
+            state = GhostState.Home;
+            EndTimeHome = Time.time + TimeRemaining;
+        } else switch (nextState) {
             case GhostState.Chase:
                 state = GhostState.Chase;
                 nextState = GhostState.Scatter;
@@ -390,5 +414,19 @@ public class GhostController : MonoBehaviour {
             default: Scatter(); break;
         }
         speed = gc.ghostSpeed[0] * gc.fullSpeed;
+    }
+
+    private Direction GetCurrentDirection() {
+        float min = Single.MaxValue;
+        float dist;
+        Direction currDir = dir;
+        foreach (Direction d in Rotation.keys) {
+            dist = Quaternion.Angle(Rotation[d], transform.localRotation);
+            if (dist < min) {
+                currDir = d;
+                min = dist;
+            }
+        }
+        return currDir;
     }
 }

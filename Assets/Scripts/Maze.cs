@@ -21,17 +21,23 @@ public class Maze : MonoBehaviour {
     
     public TextAsset mazeFile;
 
-    private Transform walls, collectables;
+    private Transform floor, walls, collectables;
 
     void Awake() {
         gc = GameObject.Find("Game Engine").GetComponent<GameController>();
         
+        floor = transform.Find("Floor");
         walls = transform.Find("Walls");
         collectables = transform.Find("Collectables");
 
         ReadMazeFile();
         parseMaze();
 
+        floor.localScale = new Vector3(0.1f * width, 1, 0.1f * height);
+        floor.position = new Vector3(width / 2f - 0.5f, -0.5f * walls.localScale.y, height / 2f - 0.5f);
+        floor.gameObject.SetActive(true);
+
+        transform.position = new Vector3(0, -1, 0);
     }
 
     public Tile GetNearestTile(Vector3 position) {

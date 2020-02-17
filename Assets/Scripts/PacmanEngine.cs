@@ -1,12 +1,13 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace PacmanEngine {
 
     public enum Ghost {Blinky, Pinky, Inky, Clyde}
-    public enum GhostState {Inactive, Home, Scatter, Chase, Scared, Dead}
+    public enum GhostState {Inactive, Home, ScaredAtHome, Scatter, Chase, Scared, Dead}
 
     public enum Direction {right, down, left, up} // increasing priority order
 
@@ -37,10 +38,12 @@ namespace PacmanEngine {
 
     public class Array<E,T> : IEnumerable where E : Enum {
         private readonly T[] data;
+        public E[] keys { get; }
         public int Length { get; }
 
         public Array() {
-            Length = Enum.GetValues(typeof(E)).Length;
+            keys = Enum.GetValues(typeof(E)).Cast<E>().ToArray();
+            Length = keys.Length;
             data = new T[Length];
         }
 
